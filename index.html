@@ -303,6 +303,20 @@
             margin-bottom: 15px;
         }
         
+        .words-reference {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f7fafc;
+            border-radius: 10px;
+            border-left: 4px solid #007fff;
+        }
+        
+        .words-reference h4 {
+            color: #4a5568;
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+        }
+        
         @media (max-width: 768px) {
             .game-title {
                 font-size: 2.5rem;
@@ -441,6 +455,10 @@
             
             <div id="scoreInput" class="card hidden">
                 <h3>📊 How many words did your team guess correctly?</h3>
+                <div class="words-reference" id="wordsReference">
+                    <h4>📝 Words this round (for reference):</h4>
+                    <ul class="words-list" id="scoreWordsList"></ul>
+                </div>
                 <div style="text-align: center; margin: 20px 0;">
                     <div style="font-size: 1.2rem; margin-bottom: 15px;">
                         <strong id="currentTeamName"></strong> - Enter your score:
@@ -542,6 +560,7 @@
         let currentRoundScore = 0;
         let teamOrder = [];
         let totalRoundsPlayed = 0;
+        let shuffledCardIndices = [];
         
         // Utility function to shuffle an array
         function shuffleArray(array) {
@@ -612,6 +631,9 @@
                 return;
             }
             
+            // Shuffle card indices for unique randomized sequence
+            shuffledCardIndices = shuffleArray([...Array(gameWords.length).keys()]);
+            
             // Hide setup, show game
             document.getElementById('gameSetup').style.display = 'none';
             document.getElementById('gameBoard').style.display = 'block';
@@ -665,15 +687,14 @@
         function startRound() {
             if (roundActive) return;
             
-            // Get random card
+            // Get next unique card from shuffled indices
             let cardIndex;
-            do {
-                cardIndex = Math.floor(Math.random() * gameWords.length);
-            } while (usedCards.includes(cardIndex) && usedCards.length < gameWords.length);
-            
-            if (usedCards.length >= gameWords.length) {
-                usedCards = []; // Reset if all cards used
+            if (usedCards.length >= shuffledCardIndices.length) {
+                // Reset if all cards used
+                usedCards = [];
+                shuffledCardIndices = shuffleArray([...Array(gameWords.length).keys()]);
             }
+            cardIndex = shuffledCardIndices[usedCards.length];
             usedCards.push(cardIndex);
             
             // Shuffle the words from the selected card
@@ -837,11 +858,20 @@
             progressBar.style.width = '100%';
             progressBar.classList.remove('warning');
             
-            // Show score input
+            // Show score input and words reference
             document.getElementById('currentTeamName').textContent = teams[currentTeamIndex].name;
             document.getElementById('scoreInput').classList.remove('hidden');
             currentRoundScore = 0;
             document.getElementById('scoreDisplay').textContent = '0';
+            
+            // Display words for reference
+            const scoreWordsList = document.getElementById('scoreWordsList');
+            scoreWordsList.innerHTML = '';
+            currentWords.forEach((word, index) => {
+                const li = document.createElement('li');
+                li.textContent = word;
+                scoreWordsList.appendChild(li);
+            });
         }
         
         function checkWinner() {
@@ -860,6 +890,7 @@
             teams.forEach(team => team.score = 0);
             currentTeamIndex = 0;
             usedCards = [];
+            shuffledCardIndices = [];
             roundActive = false;
             clearInterval(timer);
             currentRoundScore = 0;
@@ -894,6 +925,7 @@
             teams = [];
             currentTeamIndex = 0;
             usedCards = [];
+            shuffledCardIndices = [];
             roundActive = false;
             currentRoundScore = 0;
             teamOrder = [];
