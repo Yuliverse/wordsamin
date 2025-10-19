@@ -561,6 +561,7 @@
         let teamOrder = [];
         let totalRoundsPlayed = 0;
         let shuffledCardIndices = [];
+        let audioContext = null;
         
         // Utility function to shuffle an array
         function shuffleArray(array) {
@@ -684,8 +685,20 @@
             `;
         }
         
+        function initializeAudioContext() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+        }
+        
         function startRound() {
             if (roundActive) return;
+            
+            // Initialize and resume audio context on user interaction
+            initializeAudioContext();
             
             // Get next unique card from shuffled indices
             let cardIndex;
@@ -746,8 +759,10 @@
             const percentage = (timeLeft / 30) * 100;
             progressBar.style.width = percentage + '%';
             
-            // Play tick sound
-            playTickSound();
+            // Play tick sound if audio context is available
+            if (audioContext && audioContext.state === 'running') {
+                playTickSound();
+            }
             
             if (timeLeft <= 10) {
                 timerElement.classList.add('warning');
@@ -759,9 +774,9 @@
         }
         
         function playTickSound() {
+            if (!audioContext || audioContext.state !== 'running') return;
+            
             try {
-                // Create a short tick sound using Web Audio API
-                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 const oscillator = audioContext.createOscillator();
                 const gainNode = audioContext.createGain();
                 
@@ -771,25 +786,25 @@
                 // Different pitch for last 10 seconds
                 const frequency = timeLeft <= 10 ? 1000 : 600;
                 oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
-                gainNode.gain.setValueAtTime(0.05, audioContext.currentTime);
+                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime); // Increased volume
                 gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.1);
                 
                 oscillator.start(audioContext.currentTime);
                 oscillator.stop(audioContext.currentTime + 0.1);
             } catch (error) {
-                // Fallback if Web Audio API is not supported
-                console.log('Audio not supported');
+                console.log('Tick sound error:', error);
             }
         }
         
         function playAlarmSound() {
+            if (!audioContext || audioContext.state !== 'running') return;
+            
             try {
-                // Create a loud alarm sound for when timer ends
-                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                
                 // Create multiple alarm beeps
                 for (let i = 0; i < 5; i++) {
                     setTimeout(() => {
+                        if (audioContext.state !== 'running') return;
+                        
                         const oscillator = audioContext.createOscillator();
                         const gainNode = audioContext.createGain();
                         
@@ -799,7 +814,7 @@
                         // Alternating high and low tones for alarm effect
                         const frequency = i % 2 === 0 ? 1200 : 800;
                         oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
-                        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime); // Increased volume
                         gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.4);
                         
                         oscillator.start(audioContext.currentTime);
@@ -807,8 +822,7 @@
                     }, i * 150);
                 }
             } catch (error) {
-                // Fallback if Web Audio API is not supported
-                console.log('Audio not supported');
+                console.log('Alarm sound error:', error);
             }
         }
         
@@ -870,6 +884,11 @@
             currentWords.forEach((word, index) => {
                 const li = document.createElement('li');
                 li.textContent = word;
+                li.style.padding = '8px 0';
+                li.style.borderBottom = '1px solid #e2e8f0';
+                if (index === currentWords.length - 1) {
+                    li.style.borderBottom = 'none';
+                }
                 scoreWordsList.appendChild(li);
             });
         }
@@ -896,6 +915,12 @@
             currentRoundScore = 0;
             teamOrder = [];
             totalRoundsPlayed = 0;
+            
+            // Close audio context
+            if (audioContext) {
+                audioContext.close();
+                audioContext = null;
+            }
             
             // Hide winner announcement and score input
             document.getElementById('winnerAnnouncement').classList.add('hidden');
@@ -930,6 +955,12 @@
             currentRoundScore = 0;
             teamOrder = [];
             totalRoundsPlayed = 0;
+            
+            // Close audio context
+            if (audioContext) {
+                audioContext.close();
+                audioContext = null;
+            }
             
             // Hide game board and show setup
             document.getElementById('gameBoard').style.display = 'none';
